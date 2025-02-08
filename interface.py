@@ -1,6 +1,7 @@
 import click
 import os
 from db_manager import DBManager
+from manage_backup import BackupManager
 
 
 @click.group()
@@ -16,6 +17,7 @@ def cli():
 @click.option("--password", default=lambda: os.getenv("DB_PASSWORD", ""), help="Database password")
 @click.option("--database", default=lambda: os.getenv("DB_NAME", ""), help="Database name")
 @click.option("--port", type=int, default=None, help="Database port")
+@click.option("--backup-dir", default="backups", help="Directory to store backups")
 
 
 def connect(db_type, host, user, password, database, port):
@@ -31,6 +33,13 @@ def connect(db_type, host, user, password, database, port):
     else:
         click.echo(f"Failed to connect to {db_type}")
     
+
+def backup(db_type, host, user, password, database, port, backup_dir):
+    if not port:
+        port = { "mysql": 3306, "postgresql": 5432, "mongodb":27017}[db_type]
+
+    manage_backup = BackupManager(db_type, host, user, password, database, port, backup_dir)
+    manage_backup.backup()
 
 
 
@@ -50,7 +59,7 @@ def connect(db_type, host, user, password, database, port):
 @click.option("--database", default=lambda: os.getenv("DB_NAME", ""), help="Database name")
 @click.option("--port", type=int, default=None, help="Database port")
 @click.argument("query")
-
+@click.argument("backup_file")
 
 def execute(db_type, host, user, password, database, port, query):
     if not port:
@@ -69,6 +78,17 @@ def execute(db_type, host, user, password, database, port, query):
 cli.add_command(connect)
 cli.add_command(execute)
 
+
+def restore(db_type, host, user, password, database, port, backup_file):
+    if not port:
+        port = {"mysql": 3306, "postgresql": 5432, "mongodb": 27017}[db_type]
+
+
+    manage_backup = BackupManager(db_type, host, user, password, database, port)
+    manage_backup.restore(backup_file)
+
+cli.add_command(backup)
+cli.add_command(restore)
 
 
 if __name__ == "__main__":
